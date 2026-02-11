@@ -219,3 +219,9 @@ variable "persistent_disk_type" {
   description = "The type of persistent disk that Atlantis uses to store its data on"
   default     = "pd-ssd"
 }
+
+variable "additional_docker_run_args" {
+  type        = map(string)
+  description = "Additional arguments to pass to the `docker run` command when starting the Atlantis container. This can be used to set additional flags or options that are not covered by other variables in this module."
+  default     = {}
+}
