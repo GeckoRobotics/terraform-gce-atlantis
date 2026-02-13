@@ -85,7 +85,6 @@ data "cloudinit_config" "config" {
           Description=Start atlantis container
           Wants=atlantis-chown-disk.service
           After=atlantis-chown-disk.service google-startup-scripts.service
-          Requires=google-startup-scripts.service
           [Service]
           Environment=HOME=/home/atlantis
           ExecStartPre=/usr/bin/docker-credential-gcr configure-docker --registries ${var.region}-docker.pkg.dev
