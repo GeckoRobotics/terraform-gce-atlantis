@@ -153,6 +153,27 @@ resource "google_compute_instance_template" "default" {
     }
   }
 
+  dynamic "disk" {
+    for_each = var.attach_stig_disk ? [1] : []
+    content {
+      device_name  = "atlantis-stig-disk-0"
+      disk_type    = "pd-ssd"
+      mode         = "READ_ONLY"
+      auto_delete  = false
+      source       = var.stig_disk_image
+      labels = merge(
+        local.atlantis_labels,
+      )
+
+      dynamic "disk_encryption_key" {
+        for_each = var.disk_kms_key_self_link != null ? [1] : []
+        content {
+          kms_key_self_link = var.disk_kms_key_self_link
+        }
+      }
+    }
+  }
+
   #  Persistent disk for Atlantis
   disk {
     device_name  = local.atlantis_persistent_disk_name

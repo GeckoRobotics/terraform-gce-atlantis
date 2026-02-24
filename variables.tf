@@ -29,6 +29,17 @@ variable "machine_image" {
   default     = null
 }
 
+variable "attach_stig_disk" {
+  type        = bool
+  description = "Whether to attach the STIG disk to the instance running Atlantis"
+  default     = false
+}
+
+variable "stig_disk_image" {
+  type = string
+  description = "The machine image to create the STIG disk with, to pin to one, use the following format: projects/cos-cloud/global/images/cos-stable-109-17800-147-54"
+}
+
 variable "machine_type" {
   type        = string
   description = "The machine type to run Atlantis on"
