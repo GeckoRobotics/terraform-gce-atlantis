@@ -137,7 +137,7 @@ resource "google_compute_instance_template" "default" {
     auto_delete  = true
     boot         = true
     disk_type    = "pd-ssd"
-    disk_size_gb = 10
+    disk_size_gb = var.machine_image != null ? null : 10 
     labels = merge(
       local.atlantis_labels,
       {
