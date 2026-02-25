@@ -154,7 +154,7 @@ resource "google_compute_instance_template" "default" {
   }
 
   dynamic "disk" {
-    for_each = var.attach_stig_disk ? [1] : []
+    for_each = var.stig_disk_image != "" ? [1] : []
     content {
       device_name  = "atlantis-stig-disk-0"
       disk_type    = "pd-ssd"

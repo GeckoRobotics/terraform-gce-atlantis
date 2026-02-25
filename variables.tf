@@ -38,6 +38,7 @@ variable "attach_stig_disk" {
 variable "stig_disk_image" {
   type = string
   description = "The machine image to create the STIG disk with, to pin to one, use the following format: projects/cos-cloud/global/images/cos-stable-109-17800-147-54"
+  default = ""
 }
 
 variable "machine_type" {
