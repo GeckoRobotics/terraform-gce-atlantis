@@ -160,7 +160,7 @@ resource "google_compute_instance_template" "default" {
       disk_type    = "pd-ssd"
       mode         = "READ_ONLY"
       auto_delete  = false
-      source       = var.stig_disk_image
+      source_image = var.stig_disk_image
       labels = merge(
         local.atlantis_labels,
       )
