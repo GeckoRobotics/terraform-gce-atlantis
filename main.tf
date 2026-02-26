@@ -439,7 +439,7 @@ resource "google_compute_target_https_proxy" "default" {
   name    = var.name
   url_map = google_compute_url_map.default[0].id
   ssl_certificates = [
-    google_compute_managed_ssl_certificate.default.id,
+    google_compute_managed_ssl_certificate.default[0].id,
   ]
   ssl_policy = var.ssl_policy
   project    = var.project
@@ -491,6 +491,8 @@ resource "google_compute_firewall" "lb_health_check" {
 # =============================
 
 resource "google_compute_region_health_check" "default_regional" {
+  count = var.regional_load_balancing ? 1 : 0
+  
   name                = var.name
   region              = var.region
   check_interval_sec  = 1
@@ -651,7 +653,7 @@ resource "google_compute_region_target_https_proxy" "default_regional" {
   name    = var.name
   url_map = google_compute_region_url_map.default_regional[0].id
   ssl_certificates = [
-    google_compute_managed_ssl_certificate.default.id,
+    google_compute_managed_ssl_certificate.default[0].id,
   ]
   ssl_policy = var.ssl_policy
   project    = var.project
@@ -663,7 +665,7 @@ resource "google_compute_forwarding_rule" "https" {
   name                  = var.name
   target                = google_compute_region_target_https_proxy.default_regional[0].id
   port_range            = "443"
-  ip_address            = google_compute_global_address.default.address
+  ip_address            = google_compute_address.default_regional[0].address
   load_balancing_scheme = "EXTERNAL_MANAGED"
   project               = var.project
   network               = var.network
