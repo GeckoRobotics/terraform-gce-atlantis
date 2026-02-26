@@ -666,5 +666,5 @@ resource "google_compute_forwarding_rule" "https" {
   ip_address            = google_compute_global_address.default.address
   load_balancing_scheme = "EXTERNAL_MANAGED"
   project               = var.project
-  network               = var.network
+  network               = var.load_balancer_network
 }

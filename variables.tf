@@ -237,3 +237,9 @@ variable "regional_load_balancing" {
   description = "Whether to use a regional load balancer instead of a global one. If true, the load balancer and all related resources will be created in the same region as the Atlantis instance. If false, a global load balancer will be created."
   default = false
 }
+
+variable "load_balancer_network" {
+  type        = string
+  description = "The network to attach the load balancer to. If not specified, the default network will be used."
+  default     = null
+}
