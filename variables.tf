@@ -238,8 +238,8 @@ variable "regional_load_balancing" {
   default = false
 }
 
-variable "load_balancer_network" {
+variable "load_balancer_subnetwork" {
   type        = string
-  description = "The network to attach the load balancer to. If not specified, the default network will be used."
+  description = "The subnetwork to attach the load balancer to. If not specified, the default subnetwork will be used."
   default     = null
 }
