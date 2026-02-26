@@ -1,5 +1,5 @@
 output "ip_address" {
-  value       = google_compute_global_address.default.address
+  value       = var.regional_load_balancing ? google_compute_address.regional_default[0].address : google_compute_global_address.default[0].address
   description = "The IPv4 address of the load balancer"
 }
 
@@ -19,6 +19,6 @@ output "managed_ssl_certificate_expire_time" {
 }
 
 output "iap_backend_service_name" {
-  value       = var.iap != null ? google_compute_backend_service.iap[0].name : null
+  value       = var.iap != null ? (var.regional_load_balancing ? google_compute_region_backend_service.regional_iap[0].name : google_compute_backend_service.iap[0].name) : null
   description = "Name of the optional IAP-enabled backend service"
 }

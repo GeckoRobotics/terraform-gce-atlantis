@@ -298,11 +298,15 @@ resource "google_compute_instance_group_manager" "default" {
 }
 
 resource "google_compute_global_address" "default" {
+  count = var.regional_load_balancing ? 0 : 1
+
   name    = var.name
   project = var.project
 }
 
 resource "google_compute_managed_ssl_certificate" "default" {
+  count = var.regional_load_balancing ? 0 : 1
+
   name = var.name
   managed {
     domains = [var.domain]
@@ -311,6 +315,8 @@ resource "google_compute_managed_ssl_certificate" "default" {
 }
 
 resource "google_compute_backend_service" "default" {
+  count = var.regional_load_balancing ? 0 : 1
+
   name                            = var.name
   protocol                        = "HTTP"
   port_name                       = local.atlantis_port_name
@@ -334,7 +340,8 @@ resource "google_compute_backend_service" "default" {
 }
 
 resource "google_compute_backend_service" "iap" {
-  count                           = var.iap != null ? 1 : 0
+  count                           = var.iap != null ? (var.regional_load_balancing ? 0 : 1) : 0
+
   name                            = "${var.name}-iap"
   protocol                        = "HTTP"
   port_name                       = local.atlantis_port_name
@@ -368,11 +375,13 @@ resource "google_compute_backend_service" "iap" {
 }
 
 resource "google_compute_url_map" "default" {
+  count = var.regional_load_balancing ? 0 : 1
+
   name    = var.name
   project = var.project
 
   # If IAP is not used, use default backend service for unmatched requests
-  default_service = var.iap == null ? google_compute_backend_service.default.id : null
+  default_service = var.iap == null ? google_compute_backend_service.default[0].id : null
 
   # If IAP is used, redirect unmatched requests to Atlantis domain
   dynamic "default_url_redirect" {
@@ -402,14 +411,14 @@ resource "google_compute_url_map" "default" {
       default_service = google_compute_backend_service.iap[0].id
       path_rule {
         paths   = ["/events"]
-        service = google_compute_backend_service.default.id
+        service = google_compute_backend_service.default[0].id
       }
 
       dynamic "path_rule" {
         for_each = var.expose_metrics_publicly ? [1] : []
         content {
           paths   = ["/metrics"]
-          service = google_compute_backend_service.default.id
+          service = google_compute_backend_service.default[0].id
         }
       }
 
@@ -417,7 +426,7 @@ resource "google_compute_url_map" "default" {
         for_each = var.expose_healthz_publicly ? [1] : []
         content {
           paths   = ["/healthz"]
-          service = google_compute_backend_service.default.id
+          service = google_compute_backend_service.default[0].id
         }
       }
     }
@@ -425,8 +434,10 @@ resource "google_compute_url_map" "default" {
 }
 
 resource "google_compute_target_https_proxy" "default" {
+  count = var.regional_load_balancing ? 0 : 1
+
   name    = var.name
-  url_map = google_compute_url_map.default.id
+  url_map = google_compute_url_map.default[0].id
   ssl_certificates = [
     google_compute_managed_ssl_certificate.default.id,
   ]
@@ -435,17 +446,19 @@ resource "google_compute_target_https_proxy" "default" {
 }
 
 resource "google_compute_global_forwarding_rule" "https" {
+  count = var.regional_load_balancing ? 0 : 1
+
   name                  = var.name
-  target                = google_compute_target_https_proxy.default.id
+  target                = google_compute_target_https_proxy.default[0].id
   port_range            = "443"
-  ip_address            = google_compute_global_address.default.address
+  ip_address            = google_compute_global_address.default[0].address
   load_balancing_scheme = "EXTERNAL_MANAGED"
   project               = var.project
 }
 
 # Route public internet traffic to the default internet gateway
 resource "google_compute_route" "public_internet" {
-  count            = var.shared_vpc == null ? 1 : 0
+  count            = var.shared_vpc == null ? (var.regional_load_balancing ? 0 : 1) : 0
   network          = var.network
   name             = "${var.name}-public-internet"
   description      = "Custom static route for Altantis to communicate with the public internet"
@@ -458,7 +471,7 @@ resource "google_compute_route" "public_internet" {
 
 # This firewall rule allows Google Cloud to issue the health checks
 resource "google_compute_firewall" "lb_health_check" {
-  count       = var.shared_vpc == null ? 1 : 0
+  count       = var.shared_vpc == null ? (var.regional_load_balancing ? 0 : 1) : 0
   name        = "${var.name}-lb-health-checks"
   description = "Firewall rule to allow inbound Google Load Balancer health checks to the Atlantis instance"
   priority    = 0
@@ -473,4 +486,185 @@ resource "google_compute_firewall" "lb_health_check" {
   ))
   project     = var.project
   target_tags = local.atlantis_network_traffic_tags
+}
+
+# =============================
+
+resource "google_compute_region_health_check" "default_regional" {
+  name                = var.name
+  region              = var.region
+  check_interval_sec  = 1
+  timeout_sec         = 1
+  healthy_threshold   = 1
+  unhealthy_threshold = 5
+
+  tcp_health_check {
+    port = local.atlantis_port
+  }
+
+  project = var.project
+}
+
+
+resource "google_compute_address" "default_regional" {
+  count = var.regional_load_balancing ? 1 : 0
+
+  name    = var.name
+  project = var.project
+  region  = var.region
+}
+
+resource "google_certificate_manager_certificate" "default_regional" {
+  count = var.regional_load_balancing ? 1 : 0
+  
+  name = var.name
+  managed {
+    domains = [var.domain]
+  }
+  project = var.project
+}
+
+resource "google_compute_region_backend_service" "default_regional" {
+  count = var.regional_load_balancing ? 1 : 0
+
+  name                            = var.name
+  region                          = var.region
+  protocol                        = "HTTP"
+  port_name                       = local.atlantis_port_name
+  timeout_sec                     = 10
+  connection_draining_timeout_sec = 5
+  load_balancing_scheme           = "EXTERNAL_MANAGED"
+  health_checks                   = [google_compute_region_health_check.default_regional[0].id]
+  security_policy                 = var.default_backend_security_policy
+
+  log_config {
+    enable      = true
+    sample_rate = 1
+  }
+
+  backend {
+    balancing_mode  = "UTILIZATION"
+    max_utilization = 0.8
+    group           = google_compute_instance_group_manager.default.instance_group
+  }
+  project = var.project
+}
+
+resource "google_compute_region_backend_service" "iap_regional" {
+  count                           = var.iap != null && var.regional_load_balancing ? 1 : 0
+  name                            = "${var.name}-iap"
+  region                          = var.region
+  protocol                        = "HTTP"
+  port_name                       = local.atlantis_port_name
+  timeout_sec                     = 10
+  connection_draining_timeout_sec = 5
+  load_balancing_scheme           = "EXTERNAL_MANAGED"
+  health_checks                   = [google_compute_region_health_check.default_regional[0].id]
+  security_policy                 = var.iap_backend_security_policy
+
+  log_config {
+    enable      = true
+    sample_rate = 1
+  }
+
+  iap {
+    enabled              = true
+    oauth2_client_id     = var.iap.oauth2_client_id
+    oauth2_client_secret = var.iap.oauth2_client_secret
+  }
+
+  backend {
+    balancing_mode  = "UTILIZATION"
+    max_utilization = 0.8
+    group           = google_compute_instance_group_manager.default.instance_group
+  }
+  project = var.project
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+resource "google_compute_region_url_map" "default_regional" {
+  count   = var.regional_load_balancing ? 1 : 0
+
+  name    = var.name
+  project = var.project
+  region  = var.region
+
+  # If IAP is not used, use default backend service for unmatched requests
+  default_service = var.iap == null ? google_compute_region_backend_service.default_regional[0].id : null
+
+  # If IAP is used, redirect unmatched requests to Atlantis domain
+  dynamic "default_url_redirect" {
+    for_each = var.iap != null ? [1] : []
+    content {
+      host_redirect          = var.domain
+      https_redirect         = true
+      redirect_response_code = "MOVED_PERMANENTLY_DEFAULT"
+      strip_query            = false
+    }
+  }
+
+  # As Atlantis uses the `/events` path to handle incoming webhook events
+  # we shouldn't put it behind IAP, it should be protected using a webhook secret.
+  dynamic "host_rule" {
+    for_each = var.iap != null ? [1] : []
+    content {
+      hosts        = [var.domain]
+      path_matcher = "public"
+    }
+  }
+
+  dynamic "path_matcher" {
+    for_each = var.iap != null ? [1] : []
+    content {
+      name            = "public"
+      default_service = google_compute_region_backend_service.iap_regional[0].id
+      path_rule {
+        paths   = ["/events"]
+        service = google_compute_region_backend_service.default_regional[0].id
+      }
+
+      dynamic "path_rule" {
+        for_each = var.expose_metrics_publicly ? [1] : []
+        content {
+          paths   = ["/metrics"]
+          service = google_compute_region_backend_service.default_regional[0].id
+        }
+      }
+
+      dynamic "path_rule" {
+        for_each = var.expose_healthz_publicly ? [1] : []
+        content {
+          paths   = ["/healthz"]
+          service = google_compute_region_backend_service.default_regional[0].id
+        }
+      }
+    }
+  }
+}
+
+resource "google_compute_region_target_https_proxy" "default_regional" {
+  count = var.regional_load_balancing ? 1 : 0
+
+  name    = var.name
+  url_map = google_compute_region_url_map.default_regional[0].id
+  ssl_certificates = [
+    google_compute_managed_ssl_certificate.default.id,
+  ]
+  ssl_policy = var.ssl_policy
+  project    = var.project
+}
+
+resource "google_compute_forwarding_rule" "https" {
+  count = var.regional_load_balancing ? 1 : 0
+
+  name                  = var.name
+  target                = google_compute_region_target_https_proxy.default_regional[0].id
+  port_range            = "443"
+  ip_address            = google_compute_global_address.default.address
+  load_balancing_scheme = "EXTERNAL_MANAGED"
+  project               = var.project
+  network               = var.network
 }
