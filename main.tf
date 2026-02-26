@@ -537,7 +537,6 @@ resource "google_compute_region_backend_service" "default_regional" {
   connection_draining_timeout_sec = 5
   load_balancing_scheme           = "EXTERNAL_MANAGED"
   health_checks                   = [google_compute_region_health_check.default_regional[0].id]
-  security_policy                 = var.default_backend_security_policy
 
   log_config {
     enable      = true
