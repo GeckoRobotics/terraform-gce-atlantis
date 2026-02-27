@@ -29,6 +29,12 @@ variable "machine_image" {
   default     = null
 }
 
+variable "stig_disk_image" {
+  type = string
+  description = "The machine image to create the STIG disk with, to pin to one, use the following format: projects/cos-cloud/global/images/cos-stable-109-17800-147-54"
+  default = ""
+}
+
 variable "machine_type" {
   type        = string
   description = "The machine type to run Atlantis on"
@@ -218,4 +224,22 @@ variable "persistent_disk_type" {
   type        = string
   description = "The type of persistent disk that Atlantis uses to store its data on"
   default     = "pd-ssd"
+}
+
+variable "additional_docker_run_args" {
+  type        = map(string)
+  description = "Additional arguments to pass to the `docker run` command when starting the Atlantis container. This can be used to set additional flags or options that are not covered by other variables in this module."
+  default     = {}
+}
+
+variable "regional_load_balancing" {
+  type = bool
+  description = "Whether to use a regional load balancer instead of a global one. If true, the load balancer and all related resources will be created in the same region as the Atlantis instance. If false, a global load balancer will be created."
+  default = false
+}
+
+variable "load_balancer_subnetwork" {
+  type        = string
+  description = "The subnetwork to attach the load balancer to. If not specified, the default subnetwork will be used."
+  default     = null
 }
