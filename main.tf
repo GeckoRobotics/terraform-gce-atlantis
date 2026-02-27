@@ -547,6 +547,8 @@ resource "google_compute_region_backend_service" "default_regional" {
     balancing_mode  = "UTILIZATION"
     max_utilization = 0.8
     group           = google_compute_instance_group_manager.default.instance_group
+    capacity_scaler = 1
+    failover        = false
   }
   project = var.project
 }
